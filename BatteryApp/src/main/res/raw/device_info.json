@@ -1,0 +1,16 @@
+{
+  "self": {
+    "deviceId": 202,
+    "privateKeyStr": "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCDdtPUpWN6BSg27/yWH98/iHB1InZ4yDFka4wnkLDfexQ==",
+    "publicKeyStr": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEel0V0LVKSteJ0KGG1FFSIX5BMfhaSivjDQqGYWDZZ+N418bmgVO4EaO83oK5q2fRCeY8D3FJXOYgi1H1oIxoAQ=="
+  },
+  "knownDevices": [
+    {
+      "deviceId": 101,
+      "publicKeyStr": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjajZ7rE5WW7tW2JqxYZpEu1wiAB8Oq+lkF2FNrXB52y4HlORQ8iPNPDyCmU4puK/eCoG3BL9stwenyGVsbFu+w==",
+      "gattServiceUUID": "12345678-1234-5678-1234-56789abcdef0",
+      "readCharacteristicUUID": "12345678-1234-5678-1234-56789abcdef1",
+      "writeCharacteristicUUID": "12345678-1234-5678-1234-56789abcdef2"
+    }
+  ]
+}

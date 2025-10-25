@@ -9,6 +9,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+/**
+ * Material Design 3 typography configuration for the WiredApp.
+ *
+ * Defines the text styles used throughout the application following Material Design 3
+ * typography guidelines. Currently uses the default font family with standard sizing.
+ */
 // Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(

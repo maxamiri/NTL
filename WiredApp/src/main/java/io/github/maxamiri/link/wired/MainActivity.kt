@@ -25,11 +25,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 
+/**
+ * Main activity for the WiredApp (BLE server) in the NTL protocol.
+ *
+ * This activity serves as the entry point for the wired device application.
+ * It handles runtime permission requests for Bluetooth, location services, and advertising,
+ * then starts the WiredService to perform BLE advertising and GATT server operations.
+ *
+ * The UI displays real-time GPS and time data being broadcast to battery-powered devices:
+ * - Synchronized epoch time (Unix timestamp in seconds)
+ * - GPS coordinates (latitude and longitude)
+ *
+ * ## Required Permissions:
+ * - **Android 12+ (API 31+):**
+ *   - `BLUETOOTH_ADVERTISE`
+ *   - `BLUETOOTH_SCAN`
+ *   - `BLUETOOTH_CONNECT`
+ *   - `ACCESS_FINE_LOCATION`
+ * - **Android 11 and below:**
+ *   - `BLUETOOTH`
+ *   - `BLUETOOTH_ADMIN`
+ *   - `ACCESS_FINE_LOCATION`
+ */
 class MainActivity : ComponentActivity() {
 
     // Tag for logging
     private val TAG = "Wire"
 
+    /**
+     * Activity result launcher for handling multiple permission requests.
+     *
+     * If all permissions are granted, starts the WiredService. If any permission
+     * is denied, the activity finishes to prevent operation without required permissions.
+     */
     // Launcher for handling permission results
     private val permissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,6 +85,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Checks if all required permissions are granted, and requests them if needed.
+     *
+     * If permissions are already granted, the WiredService is started immediately.
+     * Otherwise, the permission request dialog is displayed to the user.
+     */
     // Returns an array of required permissions based on the Android version
     @SuppressLint("UnsafeIntentLaunch")
     private fun checkPermissions() {
@@ -77,6 +111,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Returns an array of required permissions based on the Android API level.
+     *
+     * Bluetooth permission requirements changed significantly in Android 12 (API 31).
+     * This method ensures the correct permissions are requested for each Android version.
+     *
+     * @return Array of permission strings required for BLE advertising and GPS operations
+     */
     private fun getRequiredPermissions(): Array<String> {
         val requiredPermissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -95,6 +137,16 @@ class MainActivity : ComponentActivity() {
         return requiredPermissions.toTypedArray()
     }
 
+    /**
+     * Composable function that renders the main UI screen.
+     *
+     * Displays real-time GPS and time data being broadcast by the WiredService:
+     * - Epoch time (Unix timestamp in seconds)
+     * - Latitude (scaled by 10000)
+     * - Longitude (scaled by 10000)
+     *
+     * The data is collected from StateFlows exposed by the WiredService companion object.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainScreen() {

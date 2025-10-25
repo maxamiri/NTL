@@ -46,21 +46,71 @@ import java.util.UUID
 import java.security.PrivateKey
 import java.security.PublicKey
 
+/**
+ * BLE server service for wired devices in the NTL protocol.
+ *
+ * This service represents the wired telematics unit in the Network Time Link (NTL) protocol.
+ * It acts as a mobile sink that provides the following services to nearby battery-powered nodes:
+ * 1. Broadcasts time and GPS location via BLE advertisements
+ * 2. Accepts GATT connections from battery-powered devices
+ * 3. Receives encrypted sensor data from battery devices via GATT
+ * 4. Verifies data integrity and prepares it for cloud transmission
+ *
+ * The service continuously monitors GPS location and broadcasts updated information every second,
+ * allowing battery-powered devices to synchronize their clocks and obtain accurate positioning
+ * without consuming energy on GPS and LTE modules.
+ *
+ * ## Broadcast Data Format (16 bytes, little-endian):
+ * - Bytes 0-3: Device ID (int32)
+ * - Bytes 4-7: Epoch time in seconds (int32)
+ * - Bytes 8-11: Latitude × 10000 (int32)
+ * - Bytes 12-15: Longitude × 10000 (int32)
+ *
+ * ## Security:
+ * - Uses ECDH key exchange with pre-shared public keys
+ * - AES-128-GCM authenticated encryption for data reception
+ * - SHA-256 checksum verification for payload integrity
+ *
+ * @see BatteryService for the client-side implementation
+ */
 class WiredService : Service(), LocationListener {
 
     private val TAG = "WiredService"
     private lateinit var locationManager: LocationManager
 
+    /**
+     * Companion object exposing GPS and time data as StateFlows.
+     *
+     * These StateFlows can be collected by UI components to display real-time
+     * location and time information being broadcast to battery-powered devices.
+     */
     // Companion object to expose location and device data as StateFlows
     companion object {
         private var _latitude = MutableStateFlow(0)
+        /**
+         * Current latitude scaled by 10000 (e.g., 12345 = 1.2345°).
+         */
         val latitude: StateFlow<Int> = _latitude.asStateFlow()
+
         private var _longitude = MutableStateFlow(0)
+        /**
+         * Current longitude scaled by 10000 (e.g., 67890 = 6.7890°).
+         */
         val longitude: StateFlow<Int> = _longitude.asStateFlow()
+
         private var _epoch = MutableStateFlow(0)
+        /**
+         * Current Unix epoch time in seconds.
+         */
         val epoch: StateFlow<Int> = _epoch.asStateFlow()
     }
 
+    /**
+     * Called when the service is created.
+     *
+     * Initializes the foreground service notification, starts GPS location updates,
+     * and sets up BLE advertising and GATT server components.
+     */
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
@@ -81,6 +131,13 @@ class WiredService : Service(), LocationListener {
         bleSetup()
     }
 
+    /**
+     * Starts the service in foreground mode with a persistent notification.
+     *
+     * Running as a foreground service ensures continuous GPS tracking and BLE advertising
+     * even when the app is in the background, which is essential for providing reliable
+     * time and location services to nearby battery-powered devices.
+     */
     // Sets up a foreground service notification
     private fun startForegroundService() {
         val notificationChannelId = "LinkServiceChannel"
@@ -102,15 +159,33 @@ class WiredService : Service(), LocationListener {
         startForeground(1, notification)
     }
 
+    /**
+     * Creates a PendingIntent to launch MainActivity when the notification is tapped.
+     *
+     * @return PendingIntent for opening the app's main activity
+     */
     // Creates a PendingIntent to launch MainActivity when the notification is tapped
     private fun getPendingIntent(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java)
         return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
+    /**
+     * Manufacturer data buffer for BLE advertising.
+     *
+     * Contains device ID, epoch time, latitude, and longitude in little-endian format (16 bytes).
+     */
     // Manufacturer data for BLE advertising
     private var manufacturerData: ByteArray? = null
 
+    /**
+     * Called when GPS location changes.
+     *
+     * Updates the internal location state, prepares manufacturer data for BLE advertising,
+     * and restarts advertising with the new location information.
+     *
+     * @param location The new GPS location
+     */
     // Updates location data when location changes
     override fun onLocationChanged(location: Location) {
         _epoch.value = (System.currentTimeMillis() / 1000).toInt()
@@ -136,6 +211,12 @@ class WiredService : Service(), LocationListener {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /**
+     * Cleans up resources when the service is destroyed.
+     *
+     * Stops GPS location updates, removes scheduled advertising tasks, stops BLE advertising,
+     * and closes the GATT server.
+     */
     // Cleanup resources when the service is destroyed
     @SuppressLint("MissingPermission")
     override fun onDestroy() {
@@ -146,6 +227,7 @@ class WiredService : Service(), LocationListener {
         gattServer.close()
     }
 
+    // Device cryptographic configuration
     // Main Service objects and variables
     private var ownDeviceId: Int = 0
     private lateinit var privateKey: PrivateKey
@@ -155,6 +237,7 @@ class WiredService : Service(), LocationListener {
     private lateinit var writeCharacteristicUUID: UUID
     private lateinit var deviceList: DeviceList
 
+    // Bluetooth components
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var bluetoothLeAdvertiser: BluetoothLeAdvertiser
@@ -170,6 +253,16 @@ class WiredService : Service(), LocationListener {
         // handler.postDelayed(this, 1000)
     }
 
+    /**
+     * Initializes the BLE server by loading device configuration and setting up GATT services.
+     *
+     * This method:
+     * 1. Loads device registry from device_info.json
+     * 2. Converts cryptographic keys from Base64 strings
+     * 3. Initializes BLE adapter and advertiser
+     * 4. Creates GATT server with read and write characteristics
+     * 5. Starts BLE advertising
+     */
     @SuppressLint("MissingPermission")
     fun bleSetup() {
         deviceList = KeyUtil.loadDeviceList(this, R.raw.device_info)
@@ -225,6 +318,20 @@ class WiredService : Service(), LocationListener {
 
     private var advertising = false
 
+    /**
+     * Starts BLE advertising with current GPS location and time data.
+     *
+     * Broadcasts manufacturer-specific data containing:
+     * - Device ID (4 bytes)
+     * - Epoch time in seconds (4 bytes)
+     * - Latitude × 10000 (4 bytes)
+     * - Longitude × 10000 (4 bytes)
+     *
+     * The advertisement is connectable, allowing battery-powered devices to establish
+     * GATT connections for secure data offloading.
+     *
+     * If location data is not yet available, the method reschedules itself after 2 seconds.
+     */
     // Start advertising BLE data
     @SuppressLint("MissingPermission")
     @Synchronized
@@ -251,6 +358,12 @@ class WiredService : Service(), LocationListener {
         advertising = true
     }
 
+    /**
+     * Stops BLE advertising.
+     *
+     * Called when a client connects via GATT to prevent additional connections
+     * during an active data transfer session.
+     */
     // Stop advertising BLE data
     @Synchronized
     @SuppressLint("MissingPermission")
@@ -260,6 +373,11 @@ class WiredService : Service(), LocationListener {
         Log.d(TAG, "Advertising stopped.")
     }
 
+    /**
+     * Callback for BLE advertising events.
+     *
+     * Logs advertising start success or failure for debugging purposes.
+     */
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
             super.onStartSuccess(settingsInEffect)
@@ -272,11 +390,32 @@ class WiredService : Service(), LocationListener {
         }
     }
 
+    /**
+     * GATT server callback for handling client connections and data transfer.
+     *
+     * This callback manages the secure data reception process from battery-powered devices:
+     * 1. Stops advertising when a client connects
+     * 2. Generates and sends a unique IV when the read characteristic is accessed
+     * 3. Receives encrypted sensor data via the write characteristic
+     * 4. Decrypts data using ECDH-derived AES key
+     * 5. Verifies data integrity using SHA-256 checksum
+     * 6. Resumes advertising after client disconnection
+     */
     @SuppressLint("MissingPermission")
     private val gattServerCallback = object : BluetoothGattServerCallback() {
 
+        /**
+         * Maps connected devices to their unique IVs for AES-GCM decryption.
+         */
         lateinit var deviceMap: Pair<BluetoothDevice, ByteArray>
 
+        /**
+         * Called when a client's connection state changes.
+         *
+         * @param device The client device
+         * @param status Connection status code
+         * @param newState New connection state (CONNECTED or DISCONNECTED)
+         */
         override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
             super.onConnectionStateChange(device, status, newState)
             if (newState == BluetoothAdapter.STATE_CONNECTED) {
@@ -291,6 +430,17 @@ class WiredService : Service(), LocationListener {
             }
         }
 
+        /**
+         * Called when a client requests to read a characteristic.
+         *
+         * Generates a random 12-byte IV and sends it to the client for AES-GCM encryption.
+         * The IV is stored in deviceMap for use during decryption when the client writes data.
+         *
+         * @param device The client device
+         * @param requestId Unique request identifier
+         * @param offset Read offset (unused, always 0)
+         * @param characteristic The characteristic being read
+         */
         override fun onCharacteristicReadRequest(
             device: BluetoothDevice?,
             requestId: Int,
@@ -309,6 +459,32 @@ class WiredService : Service(), LocationListener {
             }
         }
 
+        /**
+         * Called when a client writes to a characteristic.
+         *
+         * Receives encrypted sensor data from battery-powered device and processes it:
+         * 1. Extracts device ID from plaintext header (4 bytes)
+         * 2. Validates device ID against whitelist
+         * 3. Decrypts payload using ECDH-derived AES key and stored IV
+         * 4. Verifies SHA-256 checksum to ensure data integrity
+         * 5. Prepares validated data for cloud upload (TODO)
+         *
+         * The payload format:
+         * - Device ID (4 bytes, plaintext, little-endian)
+         * - Encrypted data (variable length, contains sensor data + SHA-256 checksum)
+         *
+         * The decrypted data format:
+         * - Sensor data (12 bytes): epoch (4), latitude (4), longitude (4)
+         * - SHA-256 checksum (32 bytes)
+         *
+         * @param device The client device
+         * @param requestId Unique request identifier
+         * @param characteristic The characteristic being written
+         * @param preparedWrite Whether this is a prepared write operation
+         * @param responseNeeded Whether a response should be sent
+         * @param offset Write offset (unused)
+         * @param value The data being written
+         */
         override fun onCharacteristicWriteRequest(
             device: BluetoothDevice?,
             requestId: Int,

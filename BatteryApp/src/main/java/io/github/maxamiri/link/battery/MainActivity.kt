@@ -25,10 +25,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 
+/**
+ * Main activity for the BatteryApp (BLE client) in the NTL protocol.
+ *
+ * This activity serves as the entry point for the battery-powered device application.
+ * It handles runtime permission requests for Bluetooth and location services, then
+ * starts the BatteryService to perform BLE scanning and data offloading operations.
+ *
+ * The UI displays real-time data received from nearby wired devices:
+ * - Device ID of the connected wired device
+ * - Synchronized epoch time
+ * - GPS coordinates (latitude and longitude)
+ *
+ * ## Required Permissions:
+ * - **Android 12+ (API 31+):**
+ *   - `BLUETOOTH_SCAN`
+ *   - `BLUETOOTH_CONNECT`
+ *   - `ACCESS_FINE_LOCATION`
+ * - **Android 11 and below:**
+ *   - `BLUETOOTH`
+ *   - `BLUETOOTH_ADMIN`
+ *   - `ACCESS_FINE_LOCATION`
+ */
 class MainActivity : ComponentActivity() {
 
     private val TAG = "Battery"
 
+    /**
+     * Activity result launcher for handling multiple permission requests.
+     *
+     * If all permissions are granted, starts the BatteryService. If any permission
+     * is denied, the activity finishes to prevent operation without required permissions.
+     */
     private val permissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -51,6 +79,12 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
     }
 
+    /**
+     * Checks if all required permissions are granted, and requests them if needed.
+     *
+     * If permissions are already granted, the BatteryService is started immediately.
+     * Otherwise, the permission request dialog is displayed to the user.
+     */
     private fun checkPermissions() {
         val requiredPermissions = getRequiredPermissions()
         if (requiredPermissions.all { permission ->
@@ -67,6 +101,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Returns an array of required permissions based on the Android API level.
+     *
+     * Bluetooth permission requirements changed significantly in Android 12 (API 31).
+     * This method ensures the correct permissions are requested for each Android version.
+     *
+     * @return Array of permission strings required for BLE operations
+     */
     private fun getRequiredPermissions(): Array<String> {
         val requiredPermissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -82,6 +124,16 @@ class MainActivity : ComponentActivity() {
         return requiredPermissions.toTypedArray()
     }
 
+    /**
+     * Composable function that renders the main UI screen.
+     *
+     * Displays real-time data received from the BatteryService:
+     * - Remote device ID
+     * - Synchronized epoch time (Unix timestamp in seconds)
+     * - Latitude and longitude (scaled by 10000)
+     *
+     * The data is collected from StateFlows exposed by the BatteryService companion object.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainScreen() {

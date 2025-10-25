@@ -14,12 +14,18 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+/**
+ * Dark theme color scheme for the BatteryApp.
+ */
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
 
+/**
+ * Light theme color scheme for the BatteryApp.
+ */
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
@@ -36,6 +42,17 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+/**
+ * Main theme composable for the BatteryApp.
+ *
+ * Applies Material Design 3 theming with support for dark/light modes and dynamic color
+ * (available on Android 12+). The theme automatically adapts to system preferences
+ * and device capabilities.
+ *
+ * @param darkTheme Whether to use dark theme (defaults to system preference)
+ * @param dynamicColor Whether to use Material You dynamic colors on Android 12+ (defaults to true)
+ * @param content The composable content to be themed
+ */
 @Composable
 fun LinkWiredTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

@@ -7,12 +7,16 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.*
+import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,9 +52,8 @@ import androidx.core.content.ContextCompat
  *   - `ACCESS_FINE_LOCATION`
  */
 class MainActivity : ComponentActivity() {
-
     // Tag for logging
-    private val TAG = "Wire"
+    private val tag = "Wire"
 
     /**
      * Activity result launcher for handling multiple permission requests.
@@ -58,20 +61,20 @@ class MainActivity : ComponentActivity() {
      * If all permissions are granted, starts the WiredService. If any permission
      * is denied, the activity finishes to prevent operation without required permissions.
      */
-    // Launcher for handling permission results
-    private val permissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        // If all permissions are granted, start the service
-        if (permissions.values.all { it }) {
-            val intent = Intent(this, WiredService::class.java)
-            startService(intent)
-        } else {
-            // Log if permissions are denied and Close the app
-            Log.e(TAG, "Permissions denied")
-            finish()
+    private val permissionsLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { permissions ->
+            // If all permissions are granted, start the service
+            if (permissions.values.all { it }) {
+                val intent = Intent(this, WiredService::class.java)
+                startService(intent)
+            } else {
+                // Log if permissions are denied and Close the app
+                Log.e(tag, "Permissions denied")
+                finish()
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +94,6 @@ class MainActivity : ComponentActivity() {
      * If permissions are already granted, the WiredService is started immediately.
      * Otherwise, the permission request dialog is displayed to the user.
      */
-    // Returns an array of required permissions based on the Android version
     @SuppressLint("UnsafeIntentLaunch")
     private fun checkPermissions() {
         val requiredPermissions = getRequiredPermissions()
@@ -99,9 +101,10 @@ class MainActivity : ComponentActivity() {
         if (requiredPermissions.all { permission ->
                 ContextCompat.checkSelfPermission(
                     this,
-                    permission
+                    permission,
                 ) == PackageManager.PERMISSION_GRANTED
-            }) {
+            }
+        ) {
             // Start the service if permissions are granted
             val intent = Intent(this, WiredService::class.java)
             startService(intent)
@@ -120,20 +123,21 @@ class MainActivity : ComponentActivity() {
      * @return Array of permission strings required for BLE advertising and GPS operations
      */
     private fun getRequiredPermissions(): Array<String> {
-        val requiredPermissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Bluetooth permissions for Android S and above
-                add(Manifest.permission.BLUETOOTH_ADVERTISE)
-                add(Manifest.permission.BLUETOOTH_SCAN)
-                add(Manifest.permission.BLUETOOTH_CONNECT)
-            } else {
-                // Older Bluetooth permissions
-                add(Manifest.permission.BLUETOOTH)
-                add(Manifest.permission.BLUETOOTH_ADMIN)
+        val requiredPermissions =
+            mutableListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // Bluetooth permissions for Android S and above
+                    add(Manifest.permission.BLUETOOTH_ADVERTISE)
+                    add(Manifest.permission.BLUETOOTH_SCAN)
+                    add(Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    // Older Bluetooth permissions
+                    add(Manifest.permission.BLUETOOTH)
+                    add(Manifest.permission.BLUETOOTH_ADMIN)
+                }
             }
-        }
         return requiredPermissions.toTypedArray()
     }
 
@@ -147,6 +151,7 @@ class MainActivity : ComponentActivity() {
      *
      * The data is collected from StateFlows exposed by the WiredService companion object.
      */
+    @Suppress("ktlint:standard:function-naming")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainScreen() {
@@ -155,15 +160,16 @@ class MainActivity : ComponentActivity() {
         val longitude by WiredService.longitude.collectAsState()
         val epoch by WiredService.epoch.collectAsState()
         Scaffold(
-            topBar = { TopAppBar(title = { Text("BLE Broadcast App") }) }
+            topBar = { TopAppBar(title = { Text("BLE Broadcast App") }) },
         ) { paddingValues ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp),
                 verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Placeholder for data display
                 Text("Epoch: $epoch")

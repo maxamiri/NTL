@@ -5,13 +5,6 @@ package io.github.maxamiri.link.wired.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/**
- * Material Design 3 color palette for the WiredApp.
- *
- * This file defines the color scheme used throughout the application's UI,
- * following Material Design 3 guidelines with separate colors for light and dark themes.
- */
-
 /** Primary color for dark theme (light purple) */
 val Purple80 = Color(0xFFD0BCFF)
 

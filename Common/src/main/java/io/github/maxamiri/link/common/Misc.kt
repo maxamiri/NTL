@@ -18,6 +18,4 @@ package io.github.maxamiri.link.common
  * println(bytes.toHexString()) // Output: "0a1b2c"
  * ```
  */
-fun ByteArray.toHexString(): String {
-    return joinToString(separator = "") { byte -> "%02x".format(byte) }
-}
+fun ByteArray.toHexString(): String = joinToString(separator = "") { byte -> "%02x".format(byte) }

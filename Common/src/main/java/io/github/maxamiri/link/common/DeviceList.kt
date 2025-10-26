@@ -18,5 +18,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DeviceList(
     val self: DeviceInfo,
-    val knownDevices: List<DeviceInfo>
+    val knownDevices: List<DeviceInfo>,
 )

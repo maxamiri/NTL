@@ -12,12 +12,12 @@ import java.security.PublicKey
 import java.security.SecureRandom
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import java.util.Base64
 
 /**
  * Cryptographic utility object for the NTL protocol.
@@ -34,11 +34,10 @@ import java.util.Base64
  * - Each device has a unique EC key pair (256-bit)
  */
 object KeyUtil {
-
     /**
      * Elliptic curve key size in bits (secp256r1/prime256v1 curve).
      */
-    const val EC_KEY_SIZE = 256  // Recommended key size for EC
+    const val EC_KEY_SIZE = 256 // Recommended key size for EC
 
     /**
      * AES symmetric key size in bits.
@@ -67,7 +66,10 @@ object KeyUtil {
      * @return DeviceList containing self configuration and known devices
      * @throws kotlinx.serialization.SerializationException if JSON parsing fails
      */
-    fun loadDeviceList(context: Context, resId: Int): DeviceList {
+    fun loadDeviceList(
+        context: Context,
+        resId: Int,
+    ): DeviceList {
         val inputStream = context.resources.openRawResource(resId)
         val json = inputStream.bufferedReader().use { it.readText() }
         val deviceList = Json.decodeFromString<DeviceList>(json)
@@ -86,7 +88,10 @@ object KeyUtil {
      * @return SecretKey AES-128 symmetric key derived from ECDH shared secret
      * @throws java.security.InvalidKeyException if keys are incompatible
      */
-    fun generateSecretKey(ownPrivateKey: PrivateKey, otherPublicKey: PublicKey): SecretKey {
+    fun generateSecretKey(
+        ownPrivateKey: PrivateKey,
+        otherPublicKey: PublicKey,
+    ): SecretKey {
         val keyAgreement = KeyAgreement.getInstance("ECDH")
         keyAgreement.init(ownPrivateKey)
         keyAgreement.doPhase(otherPublicKey, true)
@@ -137,7 +142,11 @@ object KeyUtil {
      * @return Encrypted data with authentication tag appended
      * @throws javax.crypto.AEADBadTagException if authentication fails
      */
-    fun encryptData(secretKey: SecretKey, iv: ByteArray, data: ByteArray): ByteArray {
+    fun encryptData(
+        secretKey: SecretKey,
+        iv: ByteArray,
+        data: ByteArray,
+    ): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec)
@@ -157,8 +166,11 @@ object KeyUtil {
      * @return Decrypted plaintext data
      * @throws javax.crypto.AEADBadTagException if authentication tag verification fails
      */
-    fun decryptData(secretKey: SecretKey, iv: ByteArray, encryptedData: ByteArray): ByteArray {
-
+    fun decryptData(
+        secretKey: SecretKey,
+        iv: ByteArray,
+        encryptedData: ByteArray,
+    ): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         val parameterSpec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
         cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec)

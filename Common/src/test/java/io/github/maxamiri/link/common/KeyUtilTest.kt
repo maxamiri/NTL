@@ -22,7 +22,6 @@ import java.util.Base64
  * not traditional validation tests.
  */
 class KeyUtilTest {
-
     /**
      * Generates an Elliptic Curve (EC) key pair using the secp256r1 curve.
      *
@@ -31,7 +30,6 @@ class KeyUtilTest {
      *
      * @return KeyPair containing EC public and private keys
      */
-    // JUnit Only
     private fun generateECKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance("EC")
         keyPairGenerator.initialize(EC_KEY_SIZE)
@@ -44,9 +42,7 @@ class KeyUtilTest {
      * @param privateKey The EC private key to encode
      * @return Base64-encoded string representation of the private key
      */
-    private fun encodePrivateKey(privateKey: PrivateKey): String {
-        return Base64.getEncoder().encodeToString(privateKey.encoded)
-    }
+    private fun encodePrivateKey(privateKey: PrivateKey): String = Base64.getEncoder().encodeToString(privateKey.encoded)
 
     /**
      * Encodes an EC public key to Base64 X.509 format.
@@ -54,9 +50,7 @@ class KeyUtilTest {
      * @param publicKey The EC public key to encode
      * @return Base64-encoded string representation of the public key
      */
-    private fun encodePublicKey(publicKey: PublicKey): String {
-        return Base64.getEncoder().encodeToString(publicKey.encoded)
-    }
+    private fun encodePublicKey(publicKey: PublicKey): String = Base64.getEncoder().encodeToString(publicKey.encoded)
 
     /**
      * Generates and prints a new EC key pair for device configuration.

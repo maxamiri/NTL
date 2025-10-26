@@ -23,7 +23,6 @@ import android.content.Intent
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
-import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.core.app.NotificationCompat
 import io.github.maxamiri.link.common.DeviceList
 import io.github.maxamiri.link.common.KeyUtil
@@ -31,6 +30,7 @@ import io.github.maxamiri.link.common.KeyUtil.convertStringToPrivateKey
 import io.github.maxamiri.link.common.KeyUtil.convertStringToPublicKey
 import io.github.maxamiri.link.common.KeyUtil.generateSecretKey
 import io.github.maxamiri.link.common.toHexString
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.nio.ByteBuffer
@@ -62,8 +62,7 @@ import kotlin.collections.forEach
  * @see WiredService for the server-side implementation
  */
 class BatteryService : Service() {
-
-    private val TAG = "BLEClient"
+    private val tag = "BLEClient"
     val context: Context = this
 
     /**
@@ -74,24 +73,28 @@ class BatteryService : Service() {
      */
     companion object {
         private var _remoteDeviceId = MutableStateFlow(0)
+
         /**
          * Device ID of the currently connected or last seen wired device.
          */
         val remoteDeviceId: StateFlow<Int> = _remoteDeviceId.asStateFlow()
 
         private var _latitude = MutableStateFlow(0)
+
         /**
-         * Latitude received from wired device (scaled by 10000, e.g., 12345 = 1.2345°).
+         * Latitude received from wired device (scaled by 10000, e.g., 12345 = 1.2345).
          */
         val latitude: StateFlow<Int> = _latitude.asStateFlow()
 
         private var _longitude = MutableStateFlow(0)
+
         /**
-         * Longitude received from wired device (scaled by 10000, e.g., 67890 = 6.7890°).
+         * Longitude received from wired device (scaled by 10000, e.g., 67890 = 6.7890).
          */
         val longitude: StateFlow<Int> = _longitude.asStateFlow()
 
         private var _epoch = MutableStateFlow(0)
+
         /**
          * Unix epoch time in seconds received from wired device for time synchronization.
          */
@@ -112,20 +115,23 @@ class BatteryService : Service() {
      */
     private fun startForegroundService() {
         val notificationChannelId = "LinkServiceChannel"
-        val channel = NotificationChannel(
-            notificationChannelId,
-            "Link Service",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
+        val channel =
+            NotificationChannel(
+                notificationChannelId,
+                "Link Service",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
 
-        val notification: Notification = NotificationCompat.Builder(this, notificationChannelId)
-            .setContentTitle("Link Service")
-            .setContentText("Running Link Service")
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Replace with your own icon
-            .setContentIntent(getPendingIntent())
-            .build()
+        val notification: Notification =
+            NotificationCompat
+                .Builder(this, notificationChannelId)
+                .setContentTitle("Link Service")
+                .setContentText("Running Link Service")
+                .setSmallIcon(R.drawable.ic_launcher_foreground) // Replace with your own icon
+                .setContentIntent(getPendingIntent())
+                .build()
 
         startForeground(1, notification)
 
@@ -157,7 +163,6 @@ class BatteryService : Service() {
         bluetoothGatt?.disconnect()
         bluetoothGatt?.close()
         bluetoothGatt = null
-
     }
 
     // Device cryptographic configuration
@@ -179,10 +184,11 @@ class BatteryService : Service() {
     private var bluetoothGatt: BluetoothGatt? = null
 
     private val handler = Handler()
-    private val scanRunnable = Runnable {
-        scan()
-        //handler.postDelayed(this, scanInterval)
-    }
+    private val scanRunnable =
+        Runnable {
+            scan()
+            // handler.postDelayed(this, scanInterval)
+        }
 
     /**
      * Initializes the BLE client by loading device configuration and starting scanning.
@@ -216,19 +222,24 @@ class BatteryService : Service() {
         // Stop any ongoing scan before starting a new one
         bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallback)
 
-        val scanFilter = ScanFilter.Builder()
-            .setManufacturerData(0xFFFF, byteArrayOf()) // Filter by manufacturer ID only
-            .build()
+        // Filter by manufacturer ID only
+        val scanFilter =
+            ScanFilter
+                .Builder()
+                .setManufacturerData(0xFFFF, byteArrayOf())
+                .build()
 
-        val scanSettings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
+        val scanSettings =
+            ScanSettings
+                .Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build()
 
-        Log.d(TAG, "Starting BLE scan")
+        Log.d(tag, "Starting BLE scan")
         bluetoothAdapter.bluetoothLeScanner.startScan(
             listOf(scanFilter),
             scanSettings,
-            scanCallback
+            scanCallback,
         )
     }
 
@@ -243,70 +254,74 @@ class BatteryService : Service() {
      * The manufacturer data format (16 bytes, little-endian):
      * - Bytes 0-3: Device ID (int32)
      * - Bytes 4-7: Epoch time in seconds (int32)
-     * - Bytes 8-11: Latitude × 10000 (int32)
-     * - Bytes 12-15: Longitude × 10000 (int32)
+     * - Bytes 8-11: Latitude x 10000 (int32)
+     * - Bytes 12-15: Longitude x 10000 (int32)
      */
     @SuppressLint("MissingPermission")
-    private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val manufacturerData = result.scanRecord?.getManufacturerSpecificData(0xFFFF)
-            if (manufacturerData != null && manufacturerData.size >= 16) {
-                val dataBuffer = ByteBuffer.wrap(manufacturerData).order(ByteOrder.LITTLE_ENDIAN)
+    private val scanCallback =
+        object : ScanCallback() {
+            override fun onScanResult(
+                callbackType: Int,
+                result: ScanResult,
+            ) {
+                val manufacturerData = result.scanRecord?.getManufacturerSpecificData(0xFFFF)
+                if (manufacturerData != null && manufacturerData.size >= 16) {
+                    val dataBuffer = ByteBuffer.wrap(manufacturerData).order(ByteOrder.LITTLE_ENDIAN)
 
-                _remoteDeviceId.value = dataBuffer.getInt()
-                val newEpochTime = dataBuffer.getInt()
+                    _remoteDeviceId.value = dataBuffer.getInt()
+                    val newEpochTime = dataBuffer.getInt()
 
-                if (newEpochTime != epoch.value) {
-                    _epoch.value = newEpochTime
-                    _latitude.value = dataBuffer.getInt()
-                    _longitude.value = dataBuffer.getInt()
+                    if (newEpochTime != epoch.value) {
+                        _epoch.value = newEpochTime
+                        _latitude.value = dataBuffer.getInt()
+                        _longitude.value = dataBuffer.getInt()
 
-                    Log.d(
-                        TAG,
-                        "New Time/Location: ${_epoch.value};${_latitude.value};${_longitude.value}"
-                    )
+                        Log.d(
+                            tag,
+                            "New Time/Location: ${_epoch.value};${_latitude.value};${_longitude.value}",
+                        )
+                    }
+                }
+
+                // Identify the nearby device
+                val nearbyDevice = deviceList.knownDevices.find { it.deviceId == _remoteDeviceId.value }
+
+                if (nearbyDevice != null) {
+                    println("Device found: ${_remoteDeviceId.value}")
+                    gattServiceUUID = UUID.fromString(nearbyDevice.gattServiceUUID)
+                    readCharacteristicUUID = UUID.fromString(nearbyDevice.readCharacteristicUUID)
+                    writeCharacteristicUUID = UUID.fromString(nearbyDevice.writeCharacteristicUUID)
+                    remoteKey = convertStringToPublicKey(nearbyDevice.publicKeyStr)
+                    secretKey = generateSecretKey(privateKey, remoteKey)
+                } else {
+                    println("Device with ID ${_remoteDeviceId.value} not found.")
+                }
+
+                result.device?.let { device ->
+                    Log.d(tag, "Found device: ${device.address}, connecting.")
+
+                    // Stop scanning to prevent duplicate connections
+                    bluetoothAdapter.bluetoothLeScanner.stopScan(this)
+
+                    // Clean up the previous GATT connection
+                    bluetoothGatt?.disconnect()
+                    bluetoothGatt?.close()
+                    bluetoothGatt = null // Ensure previous GATT is fully cleared
+
+                    bluetoothGatt = device.connectGatt(context, false, gattCallback)
                 }
             }
 
-            // Identify the nearby device
-            val nearbyDevice = deviceList.knownDevices.find { it.deviceId == _remoteDeviceId.value }
-
-            if (nearbyDevice != null) {
-                println("Device found: ${_remoteDeviceId.value}")
-                gattServiceUUID = UUID.fromString(nearbyDevice.gattServiceUUID)
-                readCharacteristicUUID = UUID.fromString(nearbyDevice.readCharacteristicUUID)
-                writeCharacteristicUUID = UUID.fromString(nearbyDevice.writeCharacteristicUUID)
-                remoteKey = convertStringToPublicKey(nearbyDevice.publicKeyStr)
-                secretKey = generateSecretKey(privateKey, remoteKey)
-            } else {
-                println("Device with ID ${_remoteDeviceId.value} not found.")
+            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                results?.forEach { result ->
+                    onScanResult(ScanSettings.CALLBACK_TYPE_ALL_MATCHES, result)
+                }
             }
 
-            result.device?.let { device ->
-                Log.d(TAG, "Found device: ${device.address}, connecting.")
-
-                // Stop scanning to prevent duplicate connections
-                bluetoothAdapter.bluetoothLeScanner.stopScan(this)
-
-                // Clean up the previous GATT connection
-                bluetoothGatt?.disconnect()
-                bluetoothGatt?.close()
-                bluetoothGatt = null  // Ensure previous GATT is fully cleared
-
-                bluetoothGatt = device.connectGatt(context, false, gattCallback)
+            override fun onScanFailed(errorCode: Int) {
+                Log.e(tag, "Scan failed with error: $errorCode")
             }
         }
-
-        override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-            results?.forEach { result ->
-                onScanResult(ScanSettings.CALLBACK_TYPE_ALL_MATCHES, result)
-            }
-        }
-
-        override fun onScanFailed(errorCode: Int) {
-            Log.e(TAG, "Scan failed with error: $errorCode")
-        }
-    }
 
     /**
      * GATT client callback for handling connection, service discovery, and data transfer.
@@ -320,154 +335,171 @@ class BatteryService : Service() {
      * 6. Disconnects and resumes scanning
      */
     @SuppressLint("MissingPermission")
-    private val gattCallback = object : BluetoothGattCallback() {
-        /**
-         * Called when the connection state changes.
-         *
-         * @param gatt The GATT client instance
-         * @param status Connection status code
-         * @param newState New connection state (CONNECTED or DISCONNECTED)
-         */
-        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-            if (newState == BluetoothGatt.STATE_CONNECTED) {
-                Log.d(TAG, "Connected to GATT server, discovering services.")
-                gatt?.discoverServices()
-                gatt?.requestMtu(512)
-            } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                Log.d(TAG, "Disconnected from GATT server")
-                bluetoothGatt?.disconnect()
-                bluetoothGatt?.close()
-                bluetoothGatt = null
-                // Restart scanning if disconnected
-                handler.postDelayed(scanRunnable, 8000L)
-            }
-        }
-
-        /**
-         * Called when the MTU (Maximum Transmission Unit) size is changed.
-         *
-         * @param gatt The GATT client instance
-         * @param mtu The negotiated MTU size in bytes
-         * @param status Operation status code
-         */
-        override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "MTU changed successfully to $mtu bytes")
-                // You can now use the negotiated MTU size (e.g., mtu - 3 for payload size)
-            } else {
-                Log.e(TAG, "Failed to change MTU with status: $status")
-            }
-        }
-
-        /**
-         * Called when GATT services are discovered.
-         *
-         * Initiates reading the IV from the read characteristic to begin secure data transfer.
-         *
-         * @param gatt The GATT client instance
-         * @param status Service discovery status code
-         */
-        @SuppressLint("MissingPermission")
-        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Services discovered")
-                val service = gatt?.getService(gattServiceUUID)
-                val readCharacteristic = service?.getCharacteristic(readCharacteristicUUID)
-                readCharacteristic?.let {
-                    Log.d(TAG, "Reading characteristic.")
-                    gatt.readCharacteristic(it)
+    private val gattCallback =
+        object : BluetoothGattCallback() {
+            /**
+             * Called when the connection state changes.
+             *
+             * @param gatt The GATT client instance
+             * @param status Connection status code
+             * @param newState New connection state (CONNECTED or DISCONNECTED)
+             */
+            override fun onConnectionStateChange(
+                gatt: BluetoothGatt?,
+                status: Int,
+                newState: Int,
+            ) {
+                if (newState == BluetoothGatt.STATE_CONNECTED) {
+                    Log.d(tag, "Connected to GATT server, discovering services.")
+                    gatt?.discoverServices()
+                    gatt?.requestMtu(512)
+                } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+                    Log.d(tag, "Disconnected from GATT server")
+                    bluetoothGatt?.disconnect()
+                    bluetoothGatt?.close()
+                    bluetoothGatt = null
+                    // Restart scanning if disconnected
+                    handler.postDelayed(scanRunnable, 8000L)
                 }
-            } else {
-                Log.e(TAG, "Failed to discover services with status: $status")
             }
-        }
 
-        /**
-         * Called when a characteristic read operation completes.
-         *
-         * Receives the IV from the wired device, encrypts sensor data with AES-GCM,
-         * and writes it to the write characteristic. The data format includes:
-         * - Sensor data (12 bytes): epoch, latitude, longitude
-         * - SHA-256 checksum (32 bytes) for integrity verification
-         * - Device ID (4 bytes, plaintext) prepended to encrypted payload
-         *
-         * @param gatt The GATT client instance
-         * @param characteristic The characteristic that was read
-         * @param status Read operation status code
-         */
-        @SuppressLint("MissingPermission")
-        override fun onCharacteristicRead(
-            gatt: BluetoothGatt?,
-            characteristic: BluetoothGattCharacteristic?,
-            status: Int
-        ) {
-            if (status == BluetoothGatt.GATT_SUCCESS && characteristic?.uuid == readCharacteristicUUID) {
-                val iv = characteristic.value
-                if (iv != null) {
+            /**
+             * Called when the MTU (Maximum Transmission Unit) size is changed.
+             *
+             * @param gatt The GATT client instance
+             * @param mtu The negotiated MTU size in bytes
+             * @param status Operation status code
+             */
+            override fun onMtuChanged(
+                gatt: BluetoothGatt?,
+                mtu: Int,
+                status: Int,
+            ) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    Log.d(tag, "MTU changed successfully to $mtu bytes")
+                    // You can now use the negotiated MTU size (e.g., mtu - 3 for payload size)
+                } else {
+                    Log.e(tag, "Failed to change MTU with status: $status")
+                }
+            }
 
-                    val dataBuffer = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
-                    dataBuffer.putInt(_epoch.value)
-                    dataBuffer.putInt(_latitude.value)
-                    dataBuffer.putInt(_longitude.value)
-                    val data = dataBuffer.array()
-
-                    val checksum = MessageDigest.getInstance("SHA-256").digest(data)
-                    val dataWithChecksum = ByteBuffer.allocate(data.size + checksum.size).apply {
-                        put(data)
-                        put(checksum)
-                    }.array()
-
-                    Log.d(TAG, "Secret ${secretKey.encoded.toHexString()}")
-                    Log.d(TAG, "IV ${iv.toHexString()}")
-                    Log.d(TAG, "Plain data ${dataWithChecksum.toHexString()}")
-
-                    val encryptedData = KeyUtil.encryptData(secretKey, iv, dataWithChecksum)
-
-                    Log.d(TAG, "Encrypted data ${encryptedData.toHexString()}")
-                    val buffer = ByteBuffer.allocate(4 + encryptedData.size).apply {
-                        order(ByteOrder.LITTLE_ENDIAN)
-                        putInt(ownDeviceId)      // Append deviceId as plain text
-                        put(encryptedData)       // Append encrypted data
-                    }
-
-                    val writeCharacteristic = gatt?.getService(gattServiceUUID)
-                        ?.getCharacteristic(writeCharacteristicUUID)
-                    writeCharacteristic?.value = buffer.array()
-
-                    Log.d(TAG, "Send: ${buffer.array().toHexString()}")
-
-                    writeCharacteristic?.let {
-                        Log.d(TAG, "Writing characteristic...")
-                        gatt.writeCharacteristic(it)
+            /**
+             * Called when GATT services are discovered.
+             *
+             * Initiates reading the IV from the read characteristic to begin secure data transfer.
+             *
+             * @param gatt The GATT client instance
+             * @param status Service discovery status code
+             */
+            @SuppressLint("MissingPermission")
+            override fun onServicesDiscovered(
+                gatt: BluetoothGatt?,
+                status: Int,
+            ) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    Log.d(tag, "Services discovered")
+                    val service = gatt?.getService(gattServiceUUID)
+                    val readCharacteristic = service?.getCharacteristic(readCharacteristicUUID)
+                    readCharacteristic?.let {
+                        Log.d(tag, "Reading characteristic.")
+                        gatt.readCharacteristic(it)
                     }
                 } else {
-                    Log.e(TAG, "Characteristic IV is null")
+                    Log.e(tag, "Failed to discover services with status: $status")
                 }
-            } else {
-                Log.e(TAG, "Failed to read characteristic with status: $status")
             }
-        }
 
-        /**
-         * Called when a characteristic write operation completes.
-         *
-         * Disconnects from the GATT server after successfully writing sensor data.
-         *
-         * @param gatt The GATT client instance
-         * @param characteristic The characteristic that was written
-         * @param status Write operation status code
-         */
-        override fun onCharacteristicWrite(
-            gatt: BluetoothGatt?,
-            characteristic: BluetoothGattCharacteristic?,
-            status: Int
-        ) {
-            if (status == BluetoothGatt.GATT_SUCCESS && characteristic?.uuid == writeCharacteristicUUID) {
-                Log.d(TAG, "Characteristic write successful")
-                gatt?.disconnect()
-            } else {
-                Log.e(TAG, "Failed to write characteristic with status: $status")
+            /**
+             * Called when a characteristic read operation completes.
+             *
+             * Receives the IV from the wired device, encrypts sensor data with AES-GCM,
+             * and writes it to the write characteristic. The data format includes:
+             * - Sensor data (12 bytes): epoch, latitude, longitude
+             * - SHA-256 checksum (32 bytes) for integrity verification
+             * - Device ID (4 bytes, plaintext) prepended to encrypted payload
+             *
+             * @param gatt The GATT client instance
+             * @param characteristic The characteristic that was read
+             * @param status Read operation status code
+             */
+            @SuppressLint("MissingPermission")
+            override fun onCharacteristicRead(
+                gatt: BluetoothGatt?,
+                characteristic: BluetoothGattCharacteristic?,
+                status: Int,
+            ) {
+                if (status == BluetoothGatt.GATT_SUCCESS && characteristic?.uuid == readCharacteristicUUID) {
+                    val iv = characteristic.value
+                    if (iv != null) {
+                        val dataBuffer = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
+                        dataBuffer.putInt(_epoch.value)
+                        dataBuffer.putInt(_latitude.value)
+                        dataBuffer.putInt(_longitude.value)
+                        val data = dataBuffer.array()
+
+                        val checksum = MessageDigest.getInstance("SHA-256").digest(data)
+                        val dataWithChecksum =
+                            ByteBuffer
+                                .allocate(data.size + checksum.size)
+                                .apply {
+                                    put(data)
+                                    put(checksum)
+                                }.array()
+
+                        Log.d(tag, "Secret ${secretKey.encoded.toHexString()}")
+                        Log.d(tag, "IV ${iv.toHexString()}")
+                        Log.d(tag, "Plain data ${dataWithChecksum.toHexString()}")
+
+                        val encryptedData = KeyUtil.encryptData(secretKey, iv, dataWithChecksum)
+
+                        Log.d(tag, "Encrypted data ${encryptedData.toHexString()}")
+                        val buffer =
+                            ByteBuffer.allocate(4 + encryptedData.size).apply {
+                                order(ByteOrder.LITTLE_ENDIAN)
+                                putInt(ownDeviceId) // Append deviceId as plain text
+                                put(encryptedData) // Append encrypted data
+                            }
+
+                        val writeCharacteristic =
+                            gatt
+                                ?.getService(gattServiceUUID)
+                                ?.getCharacteristic(writeCharacteristicUUID)
+                        writeCharacteristic?.value = buffer.array()
+
+                        Log.d(tag, "Send: ${buffer.array().toHexString()}")
+
+                        writeCharacteristic?.let {
+                            Log.d(tag, "Writing characteristic...")
+                            gatt.writeCharacteristic(it)
+                        }
+                    } else {
+                        Log.e(tag, "Characteristic IV is null")
+                    }
+                } else {
+                    Log.e(tag, "Failed to read characteristic with status: $status")
+                }
+            }
+
+            /**
+             * Called when a characteristic write operation completes.
+             *
+             * Disconnects from the GATT server after successfully writing sensor data.
+             *
+             * @param gatt The GATT client instance
+             * @param characteristic The characteristic that was written
+             * @param status Write operation status code
+             */
+            override fun onCharacteristicWrite(
+                gatt: BluetoothGatt?,
+                characteristic: BluetoothGattCharacteristic?,
+                status: Int,
+            ) {
+                if (status == BluetoothGatt.GATT_SUCCESS && characteristic?.uuid == writeCharacteristicUUID) {
+                    Log.d(tag, "Characteristic write successful")
+                    gatt?.disconnect()
+                } else {
+                    Log.e(tag, "Failed to write characteristic with status: $status")
+                }
             }
         }
-    }
 }

@@ -12,7 +12,10 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,8 +51,7 @@ import androidx.core.content.ContextCompat
  *   - `ACCESS_FINE_LOCATION`
  */
 class MainActivity : ComponentActivity() {
-
-    private val TAG = "Battery"
+    private val tag = "Battery"
 
     /**
      * Activity result launcher for handling multiple permission requests.
@@ -57,17 +59,18 @@ class MainActivity : ComponentActivity() {
      * If all permissions are granted, starts the BatteryService. If any permission
      * is denied, the activity finishes to prevent operation without required permissions.
      */
-    private val permissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions.values.all { it }) {
-            val intent = Intent(this, BatteryService::class.java)
-            startService(intent)
-        } else {
-            Log.e(TAG, "Permissions denied")
-            finish()
+    private val permissionsLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { permissions ->
+            if (permissions.values.all { it }) {
+                val intent = Intent(this, BatteryService::class.java)
+                startService(intent)
+            } else {
+                Log.e(tag, "Permissions denied")
+                finish()
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,10 +93,10 @@ class MainActivity : ComponentActivity() {
         if (requiredPermissions.all { permission ->
                 ContextCompat.checkSelfPermission(
                     this,
-                    permission
+                    permission,
                 ) == PackageManager.PERMISSION_GRANTED
-            }) {
-
+            }
+        ) {
             val intent = Intent(this, BatteryService::class.java)
             startService(intent)
         } else {
@@ -110,17 +113,18 @@ class MainActivity : ComponentActivity() {
      * @return Array of permission strings required for BLE operations
      */
     private fun getRequiredPermissions(): Array<String> {
-        val requiredPermissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                add(Manifest.permission.BLUETOOTH_SCAN)
-                add(Manifest.permission.BLUETOOTH_CONNECT)
-            } else {
-                add(Manifest.permission.BLUETOOTH)
-                add(Manifest.permission.BLUETOOTH_ADMIN)
+        val requiredPermissions =
+            mutableListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    add(Manifest.permission.BLUETOOTH_SCAN)
+                    add(Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    add(Manifest.permission.BLUETOOTH)
+                    add(Manifest.permission.BLUETOOTH_ADMIN)
+                }
             }
-        }
         return requiredPermissions.toTypedArray()
     }
 
@@ -134,6 +138,7 @@ class MainActivity : ComponentActivity() {
      *
      * The data is collected from StateFlows exposed by the BatteryService companion object.
      */
+    @Suppress("ktlint:standard:function-naming")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainScreen() {
@@ -144,15 +149,16 @@ class MainActivity : ComponentActivity() {
         val epoch by BatteryService.epoch.collectAsState()
 
         Scaffold(
-            topBar = { TopAppBar(title = { Text("BLE Client App") }) }
+            topBar = { TopAppBar(title = { Text("BLE Client App") }) },
         ) { paddingValues ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp),
                 verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Display the collected values
                 Text("Device ID: $deviceId")

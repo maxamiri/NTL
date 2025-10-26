@@ -3,7 +3,6 @@
 
 package io.github.maxamiri.link.common
 
-import android.annotation.SuppressLint
 import kotlinx.serialization.Serializable
 
 /**
@@ -27,5 +26,5 @@ data class DeviceInfo(
     val privateKeyStr: String? = null,
     val gattServiceUUID: String? = null,
     val readCharacteristicUUID: String? = null,
-    val writeCharacteristicUUID: String? = null
+    val writeCharacteristicUUID: String? = null,
 )
